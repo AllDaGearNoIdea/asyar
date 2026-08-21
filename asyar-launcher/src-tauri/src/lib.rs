@@ -248,7 +248,13 @@ pub fn run() {
                 .iter()
                 .any(|arg| arg.starts_with(&format!("{scheme}://")));
             if !carries_deeplink {
-                commands::toggle_launcher(app);
+                // The single-instance callback runs on a tokio worker thread;
+                // toggle_launcher drives AppKit window ordering, which traps
+                // off the main thread.
+                let handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    commands::toggle_launcher(&handle);
+                });
             }
         }))
         .plugin(tauri_plugin_notification::init())
